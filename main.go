@@ -4,57 +4,64 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/MEN-GUE/hungry-kraken-backend/handlers"
+
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/gridfs"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 func main() {
-	// 1. Cargar las variables de entorno desde el archivo .env
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Aviso: No se encontró archivo .env, usando variables del sistema")
-	}
-
-	// 2. Obtener la URI de conexión
+	// 1. Cargar .env
+	_ = godotenv.Load()
 	mongoURI := os.Getenv("MONGO_URI")
+
 	if mongoURI == "" {
-		log.Fatal("ERROR: La variable MONGO_URI no está configurada. Revisa tu archivo .env")
+		log.Fatal("ERROR: MONGO_URI no está definido")
 	}
 
-	// 3. Configurar el contexto con un timeout de 10 segundos para no quedarnos colgados
+	// 2. Conectar a Atlas
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel() // Se asegura de cancelar el contexto al salir de la función
+	defer cancel()
 
-	// 4. Crear el cliente y conectar a MongoDB Atlas
-	clientOptions := options.Client().ApplyURI(mongoURI)
-	client, err := mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
-		log.Fatal("Error creando el cliente de MongoDB: ", err)
+		log.Fatal(err)
 	}
+	defer client.Disconnect(context.Background())
 
-	// Buena práctica: desconectar el cliente cuando la aplicación se apague
-	defer func() {
-		if err = client.Disconnect(ctx); err != nil {
-			log.Fatal("Error desconectando de MongoDB: ", err)
-		}
-	}()
-
-	// 5. Hacer "Ping" para verificar que la conexión realmente funciona a través de la red
 	err = client.Ping(ctx, readpref.Primary())
 	if err != nil {
-		log.Fatal("No se pudo conectar al clúster de Atlas. Verifica tu IP en Atlas, Usuario y Contraseña: ", err)
+		log.Fatal(err)
+	}
+	fmt.Println("🐙 ¡Conectado a MongoDB Atlas!")
+
+	// 3. Inicializar GridFS
+	db := client.Database("hungry_kraken_db")
+	bucket, err := gridfs.NewBucket(db)
+	if err != nil {
+		log.Fatal("Error inicializando GridFS: ", err)
 	}
 
-	// Si llegamos aquí, ¡la conexión fue un éxito total!
-	fmt.Println("=================================================")
-	fmt.Println("🐙 ¡El Hungry Kraken se ha conectado a MongoDB Atlas!")
-	fmt.Println("=================================================")
+	// 4. Configurar las rutas HTTP (Nuestra API)
+	gridfsHandler := &handlers.GridFSHandler{Bucket: bucket}
 
-	// Aquí más adelante inicializaremos los endpoints de nuestra API,
-	// la instancia de GridFS y el servidor web...
+	http.HandleFunc("/api/upload", gridfsHandler.UploadImage)
+	http.HandleFunc("/api/image", gridfsHandler.GetImage)
+
+	// 5. Encender el servidor
+	fmt.Println("🚀 Servidor API corriendo en http://localhost:8080")
+	fmt.Println("   - POST /api/upload (Para subir imagen)")
+	fmt.Println("   - GET  /api/image?id=<imagen_id> (Para ver imagen)")
+
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal("El servidor falló: ", err)
+	}
 }
