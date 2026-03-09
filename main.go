@@ -48,12 +48,16 @@ func main() {
 	if err != nil {
 		log.Fatal("Error inicializando GridFS: ", err)
 	}
+	
+	handlers.RestaurantesCollection = db.Collection("restaurantes")
 
 	// 4. Configurar las rutas HTTP (Nuestra API)
 	gridfsHandler := &handlers.GridFSHandler{Bucket: bucket}
 
 	http.HandleFunc("/api/upload", gridfsHandler.UploadImage)
 	http.HandleFunc("/api/image", gridfsHandler.GetImage)
+
+	http.HandleFunc("/api/restaurantes", handlers.GetRestaurantes)
 
 	// 5. Encender el servidor
 	fmt.Println("🚀 Servidor API corriendo en http://localhost:8080")
