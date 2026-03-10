@@ -50,6 +50,7 @@ func main() {
 	}
 	
 	handlers.RestaurantesCollection = db.Collection("restaurantes")
+	handlers.ResenasCollection = db.Collection("resenas")
 
 	// 4. Configurar las rutas HTTP (Nuestra API)
 	gridfsHandler := &handlers.GridFSHandler{Bucket: bucket}
@@ -58,6 +59,8 @@ func main() {
 	http.HandleFunc("/api/image", gridfsHandler.GetImage)
 
 	http.HandleFunc("/api/restaurantes", handlers.GetRestaurantes)
+
+	http.HandleFunc("/api/resenas", handlers.GetResenas)
 
 	// 5. Encender el servidor
 	fmt.Println("🚀 Servidor API corriendo en http://localhost:8080")
