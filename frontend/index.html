@@ -4,27 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hungry Kraken</title>
-    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome para los íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom config para Tailwind -->
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        kraken: '#0f172a',
-                        krakenAccent: '#10b981'
-                    }
-                }
-            }
-        }
+        tailwind.config = { theme: { extend: { colors: { kraken: '#0f172a', krakenAccent: '#10b981' } } } }
     </script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
-
-    <!-- Navbar -->
     <nav class="bg-kraken text-white p-4 shadow-md sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
             <div class="text-xl font-bold flex items-center gap-2 cursor-pointer" onclick="showView('home')">
@@ -38,86 +24,112 @@
         </div>
     </nav>
 
-    <!-- Contenedor Principal -->
     <main class="container mx-auto p-4 mt-6">
-        
-        <!-- VISTA 1: HOME (Catálogo de Restaurantes) -->
+        <!-- VISTA HOME -->
         <section id="view-home" class="block">
-            <!-- Sección de Agregación: Favoritos -->
             <div class="mb-8">
-                <h2 class="text-2xl font-bold text-kraken mb-4"><i class="fa-solid fa-star text-yellow-400"></i> Los Favoritos de la Semana</h2>
-                <div id="favoritos-container" class="flex gap-4 overflow-x-auto pb-4">
-                    <!-- JS inyecta los favoritos aquí -->
-                </div>
+                <h2 class="text-2xl font-bold text-kraken mb-4"><i class="fa-solid fa-star text-yellow-400"></i> Favoritos</h2>
+                <div id="favoritos-container" class="flex gap-4 overflow-x-auto pb-4"></div>
             </div>
-
-            <hr class="my-6 border-gray-200">
-
-            <!-- Buscador y Filtros -->
-            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <h2 class="text-2xl font-bold text-kraken">Todos los Restaurantes</h2>
-                <div class="flex gap-2 w-full md:w-auto">
-                    <input type="text" id="buscarInput" placeholder="Buscar..." class="border border-gray-300 rounded-lg px-4 py-2 w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-krakenAccent" onkeyup="if(event.key === 'Enter') renderCatalogo('', this.value)">
-                    <button onclick="renderCatalogo('', document.getElementById('buscarInput').value)" class="bg-kraken text-white px-4 py-2 rounded">Buscar</button>
-                </div>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-kraken">Restaurantes</h2>
+                <input type="text" id="buscarInput" placeholder="Buscar..." class="border rounded px-4 py-2 w-64" onkeyup="if(event.key === 'Enter') renderCatalogo('', this.value)">
             </div>
-
-            <!-- Catálogo principal -->
-            <div id="catalogo-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 <!-- JS inyecta el catálogo aquí -->
-            </div>
-            
+            <div id="catalogo-container" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
         </section>
 
-        <!-- VISTA 2: PERFIL DEL RESTAURANTE -->
+        <!-- VISTA RESTAURANTE -->
         <section id="view-restaurant" class="hidden">
-            <button onclick="showView('home')" class="mb-4 text-krakenAccent hover:underline"><i class="fa-solid fa-arrow-left"></i> Volver</button>
-            <div id="restaurant-detail-container">
-                <!-- JS inyecta detalles aquí -->
+            <button onclick="showView('home')" class="mb-4 text-krakenAccent font-bold hover:underline"><i class="fa-solid fa-arrow-left"></i> Volver al Catálogo</button>
+            <div id="restaurant-detail-container"></div>
+            
+            <!-- FORMULARIO CREAR RESEÑA -->
+            <div class="bg-white p-6 rounded-lg shadow-md mt-6 max-w-2xl">
+                <h3 class="font-bold text-lg mb-4 text-kraken"><i class="fa-solid fa-comment-medical text-krakenAccent"></i> Deja tu reseña</h3>
+                <div class="flex gap-2 mb-2">
+                    <input type="number" id="resenaCalif" placeholder="Estrellas (1-5)" class="border p-2 rounded w-32" min="1" max="5">
+                    <input type="text" id="resenaComentario" placeholder="Escribe tu opinión..." class="border p-2 rounded w-full">
+                    <button onclick="enviarResena()" class="bg-krakenAccent text-white px-4 py-2 rounded font-bold hover:bg-green-600 transition">Enviar</button>
+                </div>
             </div>
         </section>
 
-        <!-- VISTA 3: CHECKOUT -->
+        <!-- VISTA CHECKOUT (Actualizada para la Transacción) -->
         <section id="view-checkout" class="hidden">
-            <h2 class="text-3xl font-bold text-kraken mb-6">Tu Pedido</h2>
-            <div class="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
+            <h2 class="text-3xl font-bold mb-6 text-kraken">Tu Pedido</h2>
+            <div class="bg-white p-6 rounded shadow max-w-2xl mx-auto">
                 <div id="checkout-items"></div>
                 <hr class="my-4">
-                <div class="flex justify-between items-center text-xl font-bold">
-                    <span>Total:</span>
+                
+                <!-- Método de Pago -->
+                <div class="flex justify-between items-center mb-6 bg-gray-50 p-4 rounded border">
+                    <label class="font-bold text-gray-700">Método de Pago:</label>
+                    <select id="metodoPagoSelect" class="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-krakenAccent">
+                        <option value="tarjeta_credito">Tarjeta de Crédito</option>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="puntos">Puntos de Lealtad</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-between font-bold text-2xl text-kraken">
+                    <span>Total a Pagar:</span>
                     <span>Q <span id="checkout-total">0.00</span></span>
                 </div>
-                <button onclick="procesarTransaccion()" class="w-full bg-krakenAccent text-white text-lg font-bold py-3 rounded-lg mt-6 hover:bg-green-600 transition shadow-lg"><i class="fa-solid fa-lock"></i> Pagar y Ganar Puntos</button>
-                <p class="text-center text-sm text-gray-500 mt-2">*Operación protegida con Transacción ACID</p>
+                
+                <button id="btnPagar" onclick="procesarTransaccion()" class="w-full bg-krakenAccent text-white font-bold py-4 rounded-lg mt-6 hover:bg-green-600 transition shadow-lg text-lg"><i class="fa-solid fa-lock"></i> Confirmar Pedido (Transacción ACID)</button>
             </div>
         </section>
 
-        <!-- VISTA 4: ADMIN -->
+        <!-- VISTA ADMIN -->
         <section id="view-admin" class="hidden">
-            <h2 class="text-3xl font-bold text-kraken mb-6">Panel de Administración</h2>
+            <h2 class="text-3xl font-bold mb-6 text-kraken">Panel de Administración</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Tarjeta GridFS -->
-                <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-krakenAccent">
-                    <h3 class="text-xl font-bold mb-4"><i class="fa-solid fa-image"></i> Subir Foto (GridFS)</h3>
-                    <form id="uploadForm" class="flex flex-col gap-4">
-                        <input type="file" id="fotoInput" class="border p-2 rounded" accept="image/*">
-                        <button type="button" onclick="subirFotoGridFS()" class="bg-kraken text-white px-4 py-2 rounded hover:bg-krakenAccent transition">Subir Imagen</button>
-                    </form>
-                    <p id="uploadStatus" class="mt-2 text-sm text-gray-600 hidden"></p>
+                <!-- CREAR RESTAURANTE -->
+                <div class="bg-white p-6 rounded shadow border-t-4 border-blue-500">
+                    <h3 class="font-bold mb-4 text-xl"><i class="fa-solid fa-store text-blue-500"></i> Crear Restaurante</h3>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <input type="text" id="nuevoRestNombre" placeholder="Nombre del local" class="border p-2 w-full rounded col-span-2">
+                        <input type="text" id="nuevoRestCat" placeholder="Categoría (Ej. Pizza)" class="border p-2 w-full rounded col-span-2">
+                    </div>
+                    <label class="block text-sm font-bold text-gray-700 mt-2 mb-1"><i class="fa-solid fa-location-dot"></i> Ubicación (Coordenadas):</label>
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <input type="number" id="nuevoRestLat" placeholder="Latitud (Ej: 14.63)" step="any" class="border p-2 w-full rounded bg-gray-50 text-sm">
+                        <input type="number" id="nuevoRestLon" placeholder="Longitud (Ej: -90.51)" step="any" class="border p-2 w-full rounded bg-gray-50 text-sm">
+                    </div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1"><i class="fa-solid fa-image"></i> Logo del Restaurante (GridFS):</label>
+                    <input type="file" id="nuevoRestFoto" class="border p-2 w-full mb-4 rounded bg-gray-50" accept="image/*">
+                    <button onclick="crearRestaurante()" class="w-full bg-blue-500 text-white px-4 py-2 rounded font-bold hover:bg-blue-600 transition">Crear Restaurante</button>
+                    <p id="crearRestStatus" class="mt-2 text-sm text-center hidden"></p>
                 </div>
-                <!-- Tarjeta BI (Actualizada para Agregaciones) -->
-                 <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-kraken">
-                    <h3 class="text-xl font-bold mb-4"><i class="fa-solid fa-chart-line"></i> Reportes Analíticos (Agregaciones)</h3>
-                    
-                    <h4 class="font-bold text-gray-700 mt-4 mb-2"><i class="fa-solid fa-trophy text-yellow-500"></i> Restaurantes con más ventas</h4>
-                    <div id="admin-ventas-container" class="mb-4 text-sm bg-gray-50 p-2 rounded border"></div>
-                    
-                    <h4 class="font-bold text-gray-700 mt-4 mb-2"><i class="fa-solid fa-users text-blue-500"></i> Usuarios más activos</h4>
-                    <div id="admin-usuarios-container" class="text-sm bg-gray-50 p-2 rounded border"></div>
+
+                <!-- AGREGAR AL MENÚ ($push) -->
+                <div class="bg-white p-6 rounded shadow border-t-4 border-krakenAccent">
+                    <h3 class="font-bold mb-4 text-xl"><i class="fa-solid fa-utensils text-krakenAccent"></i> Agregar Platillo al Menú</h3>
+                    <input type="text" id="menuRestId" placeholder="ID del Restaurante (Cópialo del Home)" class="border p-2 w-full mb-2 rounded text-sm bg-gray-50">
+                    <div class="grid grid-cols-3 gap-2 mb-2">
+                        <input type="text" id="menuNombre" placeholder="Nombre Platillo" class="border p-2 w-full rounded col-span-2">
+                        <input type="number" id="menuPrecio" placeholder="Precio (Q)" class="border p-2 w-full rounded">
+                    </div>
+                    <textarea id="menuDesc" placeholder="Descripción breve del platillo..." class="border p-2 w-full mb-4 rounded resize-none" rows="2"></textarea>
+                    <button onclick="agregarPlatillo()" class="w-full bg-krakenAccent text-white px-4 py-2 rounded font-bold hover:bg-green-600 transition">Agregar ($push)</button>
+                </div>
+
+                <!-- REPORTES ANALÍTICOS -->
+                <div class="bg-white p-6 rounded shadow border-t-4 border-kraken md:col-span-2">
+                    <h3 class="font-bold mb-4 text-xl"><i class="fa-solid fa-chart-line text-kraken"></i> Reportes Analíticos (Agregaciones)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-bold text-gray-700 mb-2"><i class="fa-solid fa-trophy text-yellow-500"></i> Restaurantes con más ventas</h4>
+                            <div id="admin-ventas-container" class="text-sm bg-gray-50 p-3 border rounded shadow-inner"></div>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-700 mb-2"><i class="fa-solid fa-users text-blue-500"></i> Usuarios más activos</h4>
+                            <div id="admin-usuarios-container" class="text-sm bg-gray-50 p-3 border rounded shadow-inner"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
-
     </main>
 
     <script src="app.js"></script>

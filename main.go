@@ -33,6 +33,7 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 func main() {
 	_ = godotenv.Load()
 	mongoURI := os.Getenv("MONGO_URI")
+
 	if mongoURI == "" {
 		log.Fatal("ERROR: MONGO_URI no está definido en el .env")
 	}
@@ -52,77 +53,44 @@ func main() {
 	}
 	fmt.Println("🐙 ¡Conectado a MongoDB Atlas!")
 
-	db := client.Database("hungry_kraken_db")
-	bucket, err := gridfs.NewBucket(db)
-	if err != nil {
-		log.Fatal("Error inicializando GridFS: ", err)
-	}
+	// 🔑 CLAVE PARA EL CHECKOUT: Pasamos el cliente global a handlers para la Transacción ACID
+	handlers.MongoClient = client
 
-	// Inicializar colecciones
+	db := client.Database("hungry_kraken_db")
+	bucket, _ := gridfs.NewBucket(db)
+
 	handlers.RestaurantesCollection = db.Collection("restaurantes")
 	handlers.ResenasCollection = db.Collection("resenas")
 	handlers.OrdenesCollection = db.Collection("ordenes")
 	handlers.UsuariosCollection = db.Collection("usuarios")
 
-	// *** NUEVO: Pasar el client para las transacciones ACID ***
-	handlers.MongoClient = client
-
-	// Rutas GridFS
 	gridfsHandler := &handlers.GridFSHandler{Bucket: bucket}
+
+	// --- RUTAS GET Y GRIDFS ---
 	http.HandleFunc("/api/upload", enableCORS(gridfsHandler.UploadImage))
 	http.HandleFunc("/api/image", enableCORS(gridfsHandler.GetImage))
-
-	// Rutas Restaurantes (CRUD)
 	http.HandleFunc("/api/restaurantes", enableCORS(handlers.GetRestaurantes))
 	http.HandleFunc("/api/restaurante", enableCORS(handlers.GetRestauranteByID))
-	http.HandleFunc("/api/restaurantes/precio", enableCORS(handlers.PutPrecioPlatillo))        // PUT - UpdateOne
-	http.HandleFunc("/api/restaurantes/descuento", enableCORS(handlers.PutDescuentoCategoria)) // PUT - UpdateMany
-
-	// Rutas Menú ($push / $pull)
-	http.HandleFunc("/api/menu", enableCORS(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			handlers.PostMenuItem(w, r)
-		case http.MethodDelete:
-			handlers.DeleteMenuItem(w, r)
-		default:
-			http.Error(w, "Método no soportado", http.StatusMethodNotAllowed)
-		}
-	}))
-
-	// Ruta Checkout (Transacción ACID)
-	http.HandleFunc("/api/checkout", enableCORS(handlers.PostCheckout)) // POST
-
-	// Rutas Reseñas
 	http.HandleFunc("/api/resenas", enableCORS(handlers.GetResenas))
-	http.HandleFunc("/api/resena", enableCORS(handlers.DeleteResena))                // DELETE - DeleteOne
-	http.HandleFunc("/api/resenas/masivo", enableCORS(handlers.DeleteResenasMasivo)) // DELETE - DeleteMany
-
-	// Reportes
 	http.HandleFunc("/api/reportes/mejores-restaurantes", enableCORS(handlers.GetMejoresRestaurantes))
 	http.HandleFunc("/api/reportes/restaurantes-mas-ventas", enableCORS(handlers.GetRestaurantesMasVentas))
 	http.HandleFunc("/api/reportes/usuarios-mas-activos", enableCORS(handlers.GetUsuariosMasActivos))
 
-	fmt.Println("🚀 Servidor API corriendo en http://localhost:8080")
-	fmt.Println("   --- GridFS ---")
-	fmt.Println("   POST   /api/upload")
-	fmt.Println("   GET    /api/image?id=<id>")
-	fmt.Println("   --- Restaurantes ---")
-	fmt.Println("   GET    /api/restaurantes")
-	fmt.Println("   GET    /api/restaurante?id=<id>")
-	fmt.Println("   PUT    /api/restaurantes/precio      (UpdateOne: precio de platillo)")
-	fmt.Println("   PUT    /api/restaurantes/descuento   (UpdateMany: descuento por categoría)")
-	fmt.Println("   --- Menú ($push / $pull) ---")
-	fmt.Println("   POST   /api/menu   (agregar platillo)")
-	fmt.Println("   DELETE /api/menu   (quitar platillo)")
-	fmt.Println("   --- Checkout (ACID) ---")
-	fmt.Println("   POST   /api/checkout")
-	fmt.Println("   --- Reseñas ---")
-	fmt.Println("   GET    /api/resenas?restaurante_id=<id>")
-	fmt.Println("   DELETE /api/resena          (DeleteOne)")
-	fmt.Println("   DELETE /api/resenas/masivo  (DeleteMany: spam de 1 estrella)")
+	// --- RUTAS POST (Creaciones) ---
+	http.HandleFunc("/api/restaurantes/crear", enableCORS(handlers.CreateRestaurante))
+	http.HandleFunc("/api/menu/agregar", enableCORS(handlers.AddMenuItem))
+	http.HandleFunc("/api/resenas/crear", enableCORS(handlers.CreateResena))
+	http.HandleFunc("/api/checkout", enableCORS(handlers.PostCheckout)) // <-- TRANSACCIÓN ACID
 
-	if err = http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal("El servidor falló: ", err)
-	}
+	// --- RUTAS PUT (Actualizaciones) ---
+	http.HandleFunc("/api/restaurantes/precio", enableCORS(handlers.PutPrecioPlatillo))
+	http.HandleFunc("/api/restaurantes/descuento", enableCORS(handlers.PutDescuentoCategoria))
+
+	// --- RUTAS DELETE (Eliminaciones) ---
+	http.HandleFunc("/api/menu", enableCORS(handlers.DeleteMenuItem))
+	http.HandleFunc("/api/resena", enableCORS(handlers.DeleteResena))
+	http.HandleFunc("/api/resenas/masivo", enableCORS(handlers.DeleteResenasMasivo))
+
+	fmt.Println("🚀 Servidor API corriendo en http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
