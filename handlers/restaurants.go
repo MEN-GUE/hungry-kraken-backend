@@ -56,7 +56,7 @@ func GetRestaurantes(w http.ResponseWriter, r *http.Request) {
 
 	opts := options.Find()
 
-	opts.SetSort(bson.D{{"calificacion_promedio", -1}})
+	opts.SetSort(bson.D{{Key: "calificacion_promedio", Value: -1}})
 
 	opts.SetProjection(bson.M{
 		"menu": 0,
