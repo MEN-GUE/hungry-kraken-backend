@@ -72,6 +72,8 @@ func main() {
 	// Inicializar las colecciones para que los endpoints de José Pablo las encuentren
 	handlers.RestaurantesCollection = db.Collection("restaurantes")
 	handlers.ResenasCollection = db.Collection("resenas")
+	handlers.OrdenesCollection = db.Collection("ordenes")
+	handlers.UsuariosCollection = db.Collection("usuarios")
 
 	// 4. Configurar las rutas HTTP (Nuestra API) ENVUELTAS EN CORS
 	gridfsHandler := &handlers.GridFSHandler{Bucket: bucket}
@@ -84,6 +86,9 @@ func main() {
 	http.HandleFunc("/api/restaurantes", enableCORS(handlers.GetRestaurantes))
 	http.HandleFunc("/api/restaurante", enableCORS(handlers.GetRestauranteByID)) // <-- LA NUEVA RUTA
 	http.HandleFunc("/api/resenas", enableCORS(handlers.GetResenas))
+	http.HandleFunc("/api/reportes/mejores-restaurantes", enableCORS(handlers.GetMejoresRestaurantes))
+	http.HandleFunc("/api/reportes/restaurantes-mas-ventas", enableCORS(handlers.GetRestaurantesMasVentas))
+	http.HandleFunc("/api/reportes/usuarios-mas-activos", enableCORS(handlers.GetUsuariosMasActivos))
 
 	// 5. Encender el servidor
 	fmt.Println("🚀 Servidor API corriendo en http://localhost:8080")
