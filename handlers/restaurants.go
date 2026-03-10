@@ -10,6 +10,7 @@ import (
 	"github.com/MEN-GUE/hungry-kraken-backend/models"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -79,4 +80,28 @@ func GetRestaurantes(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(restaurantes)
+}
+
+// NUEVA FUNCIÓN: Obtener UN solo restaurante con su menú completo
+func GetRestauranteByID(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	idStr := r.URL.Query().Get("id")
+	objID, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		http.Error(w, "ID inválido", http.StatusBadRequest)
+		return
+	}
+
+	var restaurante models.Restaurante
+	// Aquí NO usamos proyección, así que traerá el menú completo anidado
+	err = RestaurantesCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&restaurante)
+	if err != nil {
+		http.Error(w, "Restaurante no encontrado", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(restaurante)
 }

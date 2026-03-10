@@ -17,13 +17,33 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+// Función para habilitar CORS y permitir que el frontend se conecte
+func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Permitir conexiones desde cualquier origen
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Permitir los métodos HTTP que usaremos
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Manejar peticiones "pre-vuelo" (OPTIONS) que hacen los navegadores por seguridad
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Continuar con la petición original hacia el endpoint
+		next(w, r)
+	}
+}
+
 func main() {
 	// 1. Cargar .env
 	_ = godotenv.Load()
 	mongoURI := os.Getenv("MONGO_URI")
 
 	if mongoURI == "" {
-		log.Fatal("ERROR: MONGO_URI no está definido")
+		log.Fatal("ERROR: MONGO_URI no está definido en el .env")
 	}
 
 	// 2. Conectar a Atlas
@@ -42,34 +62,36 @@ func main() {
 	}
 	fmt.Println("🐙 ¡Conectado a MongoDB Atlas!")
 
-	// 3. Inicializar GridFS
+	// 3. Inicializar GridFS y Bases de Datos
 	db := client.Database("hungry_kraken_db")
 	bucket, err := gridfs.NewBucket(db)
 	if err != nil {
 		log.Fatal("Error inicializando GridFS: ", err)
 	}
-	
+
+	// Inicializar las colecciones para que los endpoints de José Pablo las encuentren
 	handlers.RestaurantesCollection = db.Collection("restaurantes")
 	handlers.ResenasCollection = db.Collection("resenas")
 
-	// 4. Configurar las rutas HTTP (Nuestra API)
+	// 4. Configurar las rutas HTTP (Nuestra API) ENVUELTAS EN CORS
 	gridfsHandler := &handlers.GridFSHandler{Bucket: bucket}
 
-	http.HandleFunc("/api/upload", gridfsHandler.UploadImage)
-	http.HandleFunc("/api/image", gridfsHandler.GetImage)
+	// Endpoints tuyos (GridFS)
+	http.HandleFunc("/api/upload", enableCORS(gridfsHandler.UploadImage))
+	http.HandleFunc("/api/image", enableCORS(gridfsHandler.GetImage))
 
-	//Ejemplo de uso
-	//http://localhost:8080/api/restaurantes?categoria=Pizza
-	http.HandleFunc("/api/restaurantes", handlers.GetRestaurantes)
-
-	// Ejemplo de uso
-	// http://localhost:8080/api/resenas?restaurante_id=665f0a1e2a8a5c2f9f1b1234
-	http.HandleFunc("/api/resenas", handlers.GetResenas)
+	// Endpoints de José Pablo (y el tuyo nuevo de traer 1 solo)
+	http.HandleFunc("/api/restaurantes", enableCORS(handlers.GetRestaurantes))
+	http.HandleFunc("/api/restaurante", enableCORS(handlers.GetRestauranteByID)) // <-- LA NUEVA RUTA
+	http.HandleFunc("/api/resenas", enableCORS(handlers.GetResenas))
 
 	// 5. Encender el servidor
 	fmt.Println("🚀 Servidor API corriendo en http://localhost:8080")
 	fmt.Println("   - POST /api/upload (Para subir imagen)")
 	fmt.Println("   - GET  /api/image?id=<imagen_id> (Para ver imagen)")
+	fmt.Println("   - GET  /api/restaurantes (Catálogo con filtros y skip/limit)")
+	fmt.Println("   - GET  /api/restaurante?id=<id> (Traer 1 restaurante con Menú)")
+	fmt.Println("   - GET  /api/resenas?restaurante_id=<id> (Lookups)")
 
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
