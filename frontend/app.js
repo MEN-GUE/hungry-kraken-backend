@@ -1,11 +1,9 @@
 let carrito = [];
-let carritoRestauranteID = ""; // Garantiza 1 solo restaurante por orden
+let carritoRestauranteID = "";
 let restauranteViendoID = ""; 
 const MI_USUARIO_ID = "69af05541bb5738222aa5388"; 
 
-// ==========================================
-// 1. NAVEGACIÓN ENTRE VISTAS
-// ==========================================
+// 1. NAVEGACIÓN
 function showView(viewName) {
     document.getElementById('view-home').classList.add('hidden');
     document.getElementById('view-restaurant').classList.add('hidden');
@@ -18,9 +16,7 @@ function showView(viewName) {
     if(viewName === 'admin') { renderReportesAdmin(); }
 }
 
-// ==========================================
-// 2. RENDERIZADOS
-// ==========================================
+// 2. RENDERIZADO PRINCIPAL
 async function renderFavoritos() {
     const container = document.getElementById('favoritos-container');
     try {
@@ -37,23 +33,27 @@ async function renderFavoritos() {
                     <p class="text-sm font-bold mt-1"><i class="fa-solid fa-star text-yellow-400"></i> ${rest.calificacion_promedio.toFixed(1)}</p>
                 </div>`;
         });
-    } catch(e) {}
+    } catch(e) {
+        console.error("Error al cargar favoritos", e);
+    }
 }
 
 async function renderCatalogo(categoria = "", buscar = "") {
     const container = document.getElementById('catalogo-container');
-    container.innerHTML = '<p class="text-center text-gray-500 w-full col-span-3 py-10"><i class="fa-solid fa-spinner fa-spin text-3xl"></i><br>Cargando restaurantes...</p>'; 
+    container.innerHTML = '<p class="text-center text-gray-500 w-full col-span-3 py-10"><i class="fa-solid fa-spinner fa-spin text-3xl"></i><br>Cargando información...</p>'; 
 
     try {
         let url = `http://localhost:8080/api/restaurantes?page=1&limit=10`;
         if (categoria) url += `&categoria=${categoria}`;
         if (buscar) url += `&nombre=${buscar}`;
+        
         const res = await fetch(url);
         const restaurantes = await res.json();
 
         container.innerHTML = ''; 
         if (!restaurantes || restaurantes.length === 0) {
-            container.innerHTML = '<p class="text-center text-gray-500 w-full col-span-3">No hay restaurantes disponibles.</p>'; return;
+            container.innerHTML = '<p class="text-center text-gray-500 w-full col-span-3">No hay restaurantes disponibles.</p>'; 
+            return;
         }
 
         restaurantes.forEach(rest => {
@@ -72,7 +72,9 @@ async function renderCatalogo(categoria = "", buscar = "") {
                     </div>
                 </div>`;
         });
-    } catch (e) { container.innerHTML = '<p class="text-center text-red-500 w-full col-span-3">Error de conexión.</p>'; }
+    } catch (e) { 
+        container.innerHTML = '<p class="text-center text-red-500 w-full col-span-3">Error de conexión al servidor.</p>'; 
+    }
 }
 
 async function renderReportesAdmin() {
@@ -95,7 +97,9 @@ async function renderReportesAdmin() {
             usuarios.forEach(u => html += `<li><span class="font-bold text-kraken">${u.usuario}</span>: Q${u.total_gastado.toFixed(2)} <span class="text-gray-500 text-xs">(${u.total_pedidos} pedidos)</span></li>`);
             usuariosDiv.innerHTML = html + '</ul>';
         }
-    } catch(e) {}
+    } catch(e) {
+        console.error("Error al cargar reportes", e);
+    }
 }
 
 async function abrirRestaurante(id) {
@@ -124,7 +128,9 @@ async function abrirRestaurante(id) {
                         <button onclick="agregarAlCarrito('${id}', '${itemId}', '${item.nombre}', ${item.precio})" class="bg-kraken text-white px-4 py-2 rounded font-bold hover:bg-krakenAccent transition"><i class="fa-solid fa-cart-plus"></i></button>
                     </div>`;
             });
-        } else menuHTML = '<p class="text-gray-500 italic py-4">Sin platillos.</p>';
+        } else {
+            menuHTML = '<p class="text-gray-500 italic py-4">Sin platillos registrados.</p>';
+        }
 
         let resenasHTML = '';
         if (resenas && resenas.length > 0) {
@@ -138,7 +144,9 @@ async function abrirRestaurante(id) {
                         <p class="text-gray-700">"${r.comentario}"</p>
                     </div>`;
             });
-        } else resenasHTML = '<p class="text-gray-500 italic py-4">Sin reseñas.</p>';
+        } else {
+            resenasHTML = '<p class="text-gray-500 italic py-4">Sin reseñas.</p>';
+        }
 
         container.innerHTML = `
             <div class="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 border-krakenAccent flex justify-between items-center">
@@ -147,7 +155,7 @@ async function abrirRestaurante(id) {
                     <p class="text-gray-600"><i class="fa-solid fa-tag"></i> ${rest.categoria} | <i class="fa-solid fa-star text-yellow-400"></i> ${rest.calificacion_promedio}</p>
                 </div>
                 <div class="text-right">
-                    <span class="text-xs text-gray-400 block">ID del Restaurante:</span>
+                    <span class="text-xs text-gray-400 block">ID Referencia:</span>
                     <span class="text-sm font-mono bg-gray-100 p-1 rounded">${rest.id || rest._id}</span>
                 </div>
             </div>
@@ -155,15 +163,15 @@ async function abrirRestaurante(id) {
                 <div class="lg:col-span-2 bg-white p-6 rounded shadow"><h3 class="text-2xl font-bold mb-4 border-b pb-2"><i class="fa-solid fa-utensils text-krakenAccent"></i> Menú</h3>${menuHTML}</div>
                 <div class="bg-white p-6 rounded shadow h-fit"><h3 class="text-xl font-bold mb-4 border-b pb-2"><i class="fa-solid fa-comments text-krakenAccent"></i> Reseñas</h3><div class="max-h-96 overflow-y-auto pr-2">${resenasHTML}</div></div>
             </div>`;
-    } catch (e) { container.innerHTML = '<p class="text-red-500">Error.</p>'; }
+    } catch (e) { 
+        container.innerHTML = '<p class="text-red-500">Error procesando los datos del restaurante.</p>'; 
+    }
 }
 
-// ==========================================
-// 3. LOGICA DEL CARRITO Y LA TRANSACCIÓN ACID
-// ==========================================
+// 3. FUNCIONES DE PEDIDO Y CARRITO
 function agregarAlCarrito(restId, itemId, nombre, precio) {
     if (carrito.length > 0 && carritoRestauranteID !== restId) {
-        if(confirm("Solo puedes pedir de un restaurante a la vez. ¿Deseas vaciar tu carrito actual para pedir de este nuevo restaurante?")) {
+        if(confirm("Solo puede procesar un pedido por restaurante. ¿Desea vaciar el carrito actual?")) {
             carrito = [];
         } else {
             return;
@@ -187,7 +195,7 @@ function agregarAlCarrito(restId, itemId, nombre, precio) {
     }
     
     actualizarVistaCheckout();
-    alert(`¡${nombre} agregado al carrito!`);
+    alert(`Se agregó ${nombre} al carrito.`);
 }
 
 function actualizarVistaCheckout() {
@@ -197,7 +205,7 @@ function actualizarVistaCheckout() {
     container.innerHTML = '';
 
     if (carrito.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 italic text-center py-4">Tu carrito está vacío.</p>';
+        container.innerHTML = '<p class="text-gray-500 italic text-center py-4">El carrito está vacío.</p>';
         document.getElementById('checkout-total').innerText = '0.00'; 
         document.getElementById('cartCount').innerText = '0';
         return;
@@ -213,13 +221,12 @@ function actualizarVistaCheckout() {
     document.getElementById('cartCount').innerText = cantTotal;
 }
 
-// 💥 LA PRUEBA DE FUEGO (Llama al endpoint ACID de checkout.go)
 async function procesarTransaccion() {
-    if (carrito.length === 0) { alert("El carrito está vacío"); return; }
+    if (carrito.length === 0) { alert("El carrito está vacío."); return; }
     
     const metodoPago = document.getElementById('metodoPagoSelect').value;
     const btn = document.getElementById('btnPagar');
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando Transacción Segura...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando Pago...';
     btn.disabled = true;
 
     try {
@@ -237,40 +244,41 @@ async function procesarTransaccion() {
         const data = await response.json();
 
         if (response.ok) {
-            alert(`🚀 ¡TRANSACCIÓN ACID COMPLETADA!\n\n1. Tu orden se guardó con éxito (ID: ${data.orden_id}).\n2. ¡Tu cuenta acaba de ganar ${data.puntos_ganados} Puntos de Lealtad!\n\nTodo registrado de forma atómica en MongoDB.`);
+            alert(`Pedido completado con éxito.\nOrden ID: ${data.orden_id}\nPuntos de lealtad obtenidos: ${data.puntos_ganados}`);
             carrito = [];
             carritoRestauranteID = "";
             actualizarVistaCheckout();
             showView('home');
         } else {
-            alert("❌ Falló la transacción: " + JSON.stringify(data));
+            alert("El pago no pudo ser procesado: " + data.error);
         }
     } catch (error) {
-        alert("❌ Error de red al procesar la transacción.");
+        alert("Error de conexión al intentar procesar el pago.");
     } finally {
-        btn.innerHTML = '<i class="fa-solid fa-lock"></i> Confirmar Pedido (Transacción ACID)';
+        btn.innerHTML = '<i class="fa-solid fa-lock"></i> Confirmar Pedido';
         btn.disabled = false;
     }
 }
 
-// ==========================================
-// 4. FUNCIONES DE ESCRITURA (ADMIN Y RESEÑAS)
-// ==========================================
+// 4. FUNCIONES DE ESCRITURA Y MANTENIMIENTO
 async function enviarResena() {
     const comentario = document.getElementById('resenaComentario').value;
     const calif = parseInt(document.getElementById('resenaCalif').value);
-    if(!comentario || !calif) { alert("Completa comentario y estrellas."); return; }
+    if(!comentario || !calif) { alert("Completar todos los campos para la reseña."); return; }
+
     try {
         await fetch('http://localhost:8080/api/resenas/crear', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ restaurante_id: restauranteViendoID, usuario_id: MI_USUARIO_ID, comentario: comentario, calificacion: calif })
         });
-        alert("¡Reseña publicada!");
+        alert("Reseña registrada.");
         document.getElementById('resenaComentario').value = '';
         document.getElementById('resenaCalif').value = '';
         abrirRestaurante(restauranteViendoID);
-    } catch(e) { alert("Error al publicar la reseña"); }
+    } catch(e) { 
+        alert("Error al registrar la reseña."); 
+    }
 }
 
 async function crearRestaurante() {
@@ -281,7 +289,7 @@ async function crearRestaurante() {
     const fileInput = document.getElementById('nuevoRestFoto');
     const statusText = document.getElementById('crearRestStatus');
     
-    if(!nombre || !cat) { alert("Llena el nombre y la categoría."); return; }
+    if(!nombre || !cat) { alert("Completar la información principal del restaurante."); return; }
 
     statusText.classList.remove('hidden');
     statusText.className = "mt-2 text-sm text-blue-600 font-bold text-center";
@@ -289,28 +297,41 @@ async function crearRestaurante() {
 
     try {
         if (fileInput.files.length > 0) {
-            statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 1/2: Subiendo a GridFS...';
+            statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Subiendo imagen...';
             const formData = new FormData();
             formData.append("imagen", fileInput.files[0]);
+            
             const response = await fetch('http://localhost:8080/api/upload', { method: 'POST', body: formData });
-            if(response.ok) { const data = await response.json(); imagenId = data.imagen_id; }
-            else throw new Error("Fallo la subida");
+            if(response.ok) { 
+                const data = await response.json(); 
+                imagenId = data.imagen_id; 
+            } else {
+                throw new Error("Problema al procesar el archivo");
+            }
         }
-        statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 2/2: Creando restaurante...';
+
+        statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando datos...';
+        
         await fetch('http://localhost:8080/api/restaurantes/crear', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nombre: nombre, categoria: cat, imagen_perfil_id: imagenId, latitud: lat, longitud: lon })
         });
+
         statusText.className = "mt-2 text-sm text-green-600 font-bold text-center";
-        statusText.innerText = "✅ ¡Restaurante creado con éxito!";
+        statusText.innerText = "Restaurante registrado correctamente.";
+        
         document.getElementById('nuevoRestNombre').value = '';
         document.getElementById('nuevoRestCat').value = '';
         document.getElementById('nuevoRestLat').value = '';
         document.getElementById('nuevoRestLon').value = '';
         fileInput.value = '';
+        
         renderCatalogo(); 
-    } catch(e) { statusText.className = "mt-2 text-sm text-red-600 text-center"; statusText.innerText = "❌ Error: " + e.message; }
+    } catch(e) { 
+        statusText.className = "mt-2 text-sm text-red-600 text-center"; 
+        statusText.innerText = "Error de sistema: " + e.message; 
+    }
 }
 
 async function agregarPlatillo() {
@@ -319,7 +340,7 @@ async function agregarPlatillo() {
     const precio = parseFloat(document.getElementById('menuPrecio').value);
     const desc = document.getElementById('menuDesc').value;
 
-    if(!id || !nombre || isNaN(precio)) { alert("ID, Nombre y Precio obligatorios."); return; }
+    if(!id || !nombre || isNaN(precio)) { alert("Datos del platillo incompletos."); return; }
 
     try {
         await fetch('http://localhost:8080/api/menu/agregar', {
@@ -327,11 +348,49 @@ async function agregarPlatillo() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ restaurante_id: id, nombre: nombre, precio: precio, descripcion: desc })
         });
-        alert("¡Platillo inyectado al arreglo ($push) con éxito!");
+        alert("Platillo guardado en el menú.");
         document.getElementById('menuNombre').value = '';
         document.getElementById('menuPrecio').value = '';
         document.getElementById('menuDesc').value = '';
-    } catch(e) { alert("Error al agregar platillo."); }
+    } catch(e) { 
+        alert("Error de conectividad al agregar platillo."); 
+    }
 }
 
-window.onload = () => { showView('home'); };
+async function aplicarDescuentoMasivo() {
+    const categoria = document.getElementById('descCategoria').value;
+    if(!categoria) { alert("Ingresar la categoría a modificar."); return; }
+
+    try {
+        const response = await fetch('http://localhost:8080/api/restaurantes/descuento', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoria: categoria, descuento: 0.10 }) 
+        });
+        const data = await response.json();
+        alert(`Mantenimiento aplicado.\nRegistros modificados: ${data.restaurantes_afectados}`);
+        document.getElementById('descCategoria').value = '';
+        renderCatalogo(); 
+    } catch(e) {
+        alert("Error al ejecutar proceso de descuento.");
+    }
+}
+
+async function eliminarSpamMasivo() {
+    if(!confirm("Esta acción eliminará todos los registros de baja puntuación. ¿Desea continuar?")) return;
+
+    try {
+        const response = await fetch('http://localhost:8080/api/resenas/masivo', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        alert(`Mantenimiento ejecutado.\nRegistros eliminados: ${data.resenas_borradas}`);
+    } catch(e) {
+        alert("Error al ejecutar proceso de limpieza.");
+    }
+}
+
+window.onload = () => { 
+    showView('home'); 
+};
