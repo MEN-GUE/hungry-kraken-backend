@@ -58,8 +58,12 @@ func main() {
 	http.HandleFunc("/api/upload", gridfsHandler.UploadImage)
 	http.HandleFunc("/api/image", gridfsHandler.GetImage)
 
+	//Ejemplo de uso
+	//http://localhost:8080/api/restaurantes?categoria=Pizza
 	http.HandleFunc("/api/restaurantes", handlers.GetRestaurantes)
 
+	// Ejemplo de uso
+	// http://localhost:8080/api/resenas?restaurante_id=665f0a1e2a8a5c2f9f1b1234
 	http.HandleFunc("/api/resenas", handlers.GetResenas)
 
 	// 5. Encender el servidor
